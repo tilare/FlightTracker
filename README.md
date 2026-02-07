@@ -5,7 +5,7 @@ Records flight times and costs and provides flight statistics.
 
 **In-Flight Timer -** Displays remaining time left during flight.
 
-**Flight Time Tooltips -** Displays known flight times in flightmaster menu tooltips
+**Flight Time Tooltips -** Displays known flight times in flightmaster menu tooltips.
 
 **Auto Dismount -** Dismounts you when speaking to a flightmaster.
 
