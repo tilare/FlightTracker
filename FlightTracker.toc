@@ -1,0 +1,10 @@
+## Interface: 11200
+## Title: |cffffcc00Flight|cffffffffTracker
+## Notes: Tracks flight path times and flying-related statistics
+## Author: tilr
+## Version: 1.0
+## SavedVariables: FlightTrackerDB
+
+FlightTracker.lua
+api\utility.lua
+modules\gui.lua
