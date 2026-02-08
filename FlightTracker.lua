@@ -43,21 +43,17 @@ function FlightTracker:ADDON_LOADED()
 
     if not FlightTrackerDB then FlightTrackerDB = {} end
     
-    -- Global: Flight times persist across all characters
     if not FlightTrackerDB.flights then FlightTrackerDB.flights = {} end
     
-    -- Per-Character: Statistics container
     if not FlightTrackerDB.char then FlightTrackerDB.char = {} end
     if not FlightTrackerDB.char[playerName] then FlightTrackerDB.char[playerName] = {} end
 
-    -- MIGRATION: If old global stats exist, move them to the current character
     if FlightTrackerDB.stats then
         FlightTrackerDB.char[playerName].stats = FlightTrackerDB.stats
-        FlightTrackerDB.stats = nil -- Remove the old global stats table
+        FlightTrackerDB.stats = nil
         self:Print("Global statistics migrated to character: " .. playerName)
     end
 
-    -- Initialize current character stats if missing
     if not FlightTrackerDB.char[playerName].stats then 
         FlightTrackerDB.char[playerName].stats = {
             totalFlights = 0,
@@ -67,7 +63,6 @@ function FlightTracker:ADDON_LOADED()
         }
     end
 
-    -- Create a shortcut reference for the current session
     self.charStats = FlightTrackerDB.char[playerName].stats
 
     local defaultSettings = {
@@ -154,7 +149,7 @@ function FlightTracker:HookTaxiMap()
                 local origin = FlightTracker.Util.GetCurrentFlightNode()
             
                 local key = origin .. " -> " .. destName
-                local duration = FlightTrackerDB.flights[key] -- Reads from GLOBAL flights
+                local duration = FlightTrackerDB.flights[key]
             
                 local timeText = "--:--"
                 if duration then
@@ -209,7 +204,6 @@ function FlightTracker:StartFlight(destination, cost)
     startTime = GetTime()
     destNode = destination
     
-    -- Update Character Stats
     if self.charStats then
         self.charStats.totalGold = self.charStats.totalGold + (cost or 0)
         self.charStats.totalFlights = self.charStats.totalFlights + 1
@@ -218,7 +212,7 @@ function FlightTracker:StartFlight(destination, cost)
     originNode = FlightTracker.Util.GetCurrentFlightNode()
 
     local key = originNode .. " -> " .. destNode
-    local knownDuration = FlightTrackerDB.flights[key] -- Read global duration
+    local knownDuration = FlightTrackerDB.flights[key]
     
     if FlightTrackerDB.settings.announceFlight then
         local msg = "Flying to " .. destNode .. "."
@@ -265,10 +259,8 @@ function FlightTracker:EndFlight()
     if originNode and destNode and duration > 10 then
         local key = originNode .. " -> " .. destNode
         
-        -- Save flight duration GLOBALLY
         FlightTrackerDB.flights[key] = duration
         
-        -- Save statistics LOCALLY (Per Character)
         if self.charStats then
             self.charStats.totalTime = self.charStats.totalTime + duration
             
@@ -534,3 +526,4 @@ function FlightTracker:Print(msg)
     local prefix = "|cffE0C709Flight|cffffffffTracker:|r"
     DEFAULT_CHAT_FRAME:AddMessage(prefix .. " " .. tostring(msg))
 end
+
