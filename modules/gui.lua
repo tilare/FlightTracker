@@ -11,19 +11,19 @@ local mainFrame = nil
 local optionsMenuFrame = nil
 
 StaticPopupDialogs["FLIGHTTRACKER_RESET_STATS"] = {
-    text = "Are you sure you want to reset your statistics?\n(Flight times will be preserved)",
+    text = "Are you sure you want to reset your statistics for " .. UnitName("player") .. "?\n(Flight times will be preserved)",
     button1 = "Yes",
     button2 = "No",
     OnAccept = function()
-        FlightTrackerDB.stats = {
-            totalFlights = 0,
-            totalTime = 0,
-            totalGold = 0,
-            longestFlight = { duration = 0, route = "None" }
-        }
+        if FlightTracker.charStats then
+            FlightTracker.charStats.totalFlights = 0
+            FlightTracker.charStats.totalTime = 0
+            FlightTracker.charStats.totalGold = 0
+            FlightTracker.charStats.longestFlight = { duration = 0, route = "None" }
+        end
         
         if FlightTracker.GUI then FlightTracker.GUI:UpdateStats() end
-        FlightTracker:Print("Statistics have been reset.")
+        FlightTracker:Print("Statistics have been reset for " .. UnitName("player") .. ".")
     end,
     timeout = 0,
     whileDead = 1,
@@ -232,9 +232,9 @@ function GUI:CreateDropdown()
 end
 
 function GUI:UpdateStats()
-    if not mainFrame or not FlightTrackerDB then return end
+    if not mainFrame or not FlightTracker.charStats then return end
     
-    local s = FlightTrackerDB.stats
+    local s = FlightTracker.charStats
     local u = FlightTracker.Util
     
     local formatLong = u.FormatLongTime or function(t) return t end
