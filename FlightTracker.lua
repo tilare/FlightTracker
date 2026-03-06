@@ -1,3 +1,19 @@
+local CreateFrame = CreateFrame
+local GetTime = GetTime
+local UnitOnTaxi = UnitOnTaxi
+local TaxiNodeGetType = TaxiNodeGetType
+local TaxiNodeName = TaxiNodeName
+local TaxiNodeCost = TaxiNodeCost
+local GetZoneText = GetZoneText
+local UnitName = UnitName
+local GetNumRaidMembers = GetNumRaidMembers
+local GetNumPartyMembers = GetNumPartyMembers
+local SendChatMessage = SendChatMessage
+local GetPlayerBuff = GetPlayerBuff
+local CancelPlayerBuff = CancelPlayerBuff
+local GetCursorPosition = GetCursorPosition
+local tinsert = tinsert
+
 FlightTracker = CreateFrame("Frame", "FlightTracker")
 FlightTracker:SetScript("OnEvent", function()
     if FlightTracker[event] then FlightTracker[event](FlightTracker) end
@@ -21,6 +37,7 @@ local flightTimerFrame = nil
 
 local isTooltipHooked = false
 local original_TaxiNodeOnButtonEnter = nil
+local cachedOriginNode = nil
 
 StaticPopupDialogs["FLIGHTTRACKER_CONFIRM"] = {
     text = "Fly to %s?",
@@ -47,12 +64,6 @@ function FlightTracker:ADDON_LOADED()
     
     if not FlightTrackerDB.char then FlightTrackerDB.char = {} end
     if not FlightTrackerDB.char[playerName] then FlightTrackerDB.char[playerName] = {} end
-
-    if FlightTrackerDB.stats then
-        FlightTrackerDB.char[playerName].stats = FlightTrackerDB.stats
-        FlightTrackerDB.stats = nil
-        self:Print("Global statistics migrated to character: " .. playerName)
-    end
 
     if not FlightTrackerDB.char[playerName].stats then 
         FlightTrackerDB.char[playerName].stats = {
@@ -106,6 +117,8 @@ function FlightTracker:PLAYER_ENTERING_WORLD()
 end
 
 function FlightTracker:TAXIMAP_OPENED()
+    cachedOriginNode = FlightTracker.Util.GetCurrentFlightNode()
+    
     if FlightTrackerDB.settings.autoDismount then
         self:DismountPlayer()
     end
@@ -146,7 +159,7 @@ function FlightTracker:HookTaxiMap()
 
             if type == "REACHABLE" then
                 local destName = TaxiNodeName(index)
-                local origin = FlightTracker.Util.GetCurrentFlightNode()
+                local origin = cachedOriginNode or FlightTracker.Util.GetCurrentFlightNode()
             
                 local key = origin .. " -> " .. destName
                 local duration = FlightTrackerDB.flights[key]
@@ -175,6 +188,7 @@ function FlightTracker:PrepareFlight(index, destName)
 end
 
 function FlightTracker:StartMonitor()
+    self.monitorTimer = 0
     self:SetScript("OnUpdate", self.OnUpdateMonitor)
 end
 
@@ -184,6 +198,11 @@ end
 
 function FlightTracker.OnUpdateMonitor()
     local self = FlightTracker
+    
+    -- Throttle the updates to 5 times a second
+    self.monitorTimer = self.monitorTimer + arg1
+    if self.monitorTimer < 0.2 then return end
+    self.monitorTimer = 0
 
     if isPending then
         if UnitOnTaxi("player") then
@@ -204,6 +223,7 @@ function FlightTracker:StartFlight(destination, cost)
     startTime = GetTime()
     destNode = destination
     
+    -- Update Character Stats
     if self.charStats then
         self.charStats.totalGold = self.charStats.totalGold + (cost or 0)
         self.charStats.totalFlights = self.charStats.totalFlights + 1
@@ -259,8 +279,10 @@ function FlightTracker:EndFlight()
     if originNode and destNode and duration > 10 then
         local key = originNode .. " -> " .. destNode
         
+        -- Save flight duration GLOBALLY
         FlightTrackerDB.flights[key] = duration
         
+        -- Save statistics LOCALLY (Per Character)
         if self.charStats then
             self.charStats.totalTime = self.charStats.totalTime + duration
             
@@ -398,6 +420,7 @@ function FlightTracker:CreateTimerFrame()
     f:SetHeight(64)
     f:SetPoint("TOP", 0, -50)
     f:SetClampedToScreen(true)
+    f:SetFrameStrata("HIGH")
     
     f:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", 
@@ -526,4 +549,3 @@ function FlightTracker:Print(msg)
     local prefix = "|cffE0C709Flight|cffffffffTracker:|r"
     DEFAULT_CHAT_FRAME:AddMessage(prefix .. " " .. tostring(msg))
 end
-
