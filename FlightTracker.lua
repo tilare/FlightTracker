@@ -82,7 +82,10 @@ function FlightTracker:ADDON_LOADED()
         confirmFlight = false,
         announceFlight = false,
         minimapPos = 45,
-        showMinimapButton = true
+        showMinimapButton = true,
+        lockPosition = false,
+        hideBorder = false,
+        hideBackground = false
     }
 
     if not FlightTrackerDB.settings then 
@@ -459,10 +462,11 @@ function FlightTracker:CreateTimerFrame()
     resizer:SetScript("OnMouseDown", function() 
         f:StartSizing("BOTTOMRIGHT")
     end)
-    resizer:SetScript("OnMouseUp", function() 
+    resizer:SetScript("OnMouseUp", function()
         f:StopMovingOrSizing()
     end)
-    
+    f.resizer = resizer
+
     f.destText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.destText:SetPoint("TOP", 0, -10)
     f.destText:SetText("Destination")
@@ -511,7 +515,8 @@ function FlightTracker:CreateTimerFrame()
         GameTooltip:Hide()
         helpText:SetTextColor(0.5, 0.5, 0.5)
     end)
-    
+    f.help = help
+
     f:SetScript("OnUpdate", function()
         if not isFlying then return end
 
@@ -533,6 +538,38 @@ function FlightTracker:CreateTimerFrame()
         this.timerText:SetText(text)
     end)
     flightTimerFrame = f
+    FlightTracker:ApplyTimerFrameLock()
+    FlightTracker:ApplyTimerFrameStyle()
+end
+
+function FlightTracker:ApplyTimerFrameStyle()
+    local f = flightTimerFrame
+    if not f then return end
+    if FlightTrackerDB.settings.hideBackground then
+        f:SetBackdropColor(0, 0, 0, 0)
+    else
+        f:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+    end
+    if FlightTrackerDB.settings.hideBorder then
+        f:SetBackdropBorderColor(0, 0, 0, 0)
+    else
+        f:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    end
+end
+
+function FlightTracker:ApplyTimerFrameLock()
+    local locked = FlightTrackerDB.settings.lockPosition
+    local f = flightTimerFrame
+    if not f then return end
+    if locked then
+        f:EnableMouse(false)
+        if f.resizer then f.resizer:Hide() end
+        if f.help then f.help:Hide() end
+    else
+        f:EnableMouse(true)
+        if f.resizer then f.resizer:Show() end
+        if f.help then f.help:Show() end
+    end
 end
 
 SLASH_FLIGHTTRACKER1 = "/ft"

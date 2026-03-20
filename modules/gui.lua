@@ -137,13 +137,15 @@ function GUI:Create()
     resizer:SetPushedTexture(ADDON_PATH .. "img\\sizegrabber-down.tga")
     resizer:SetScript("OnMouseDown", function() f:StartSizing("BOTTOMRIGHT") end)
     resizer:SetScript("OnMouseUp", function() f:StopMovingOrSizing() end)
-    
+    f.resizer = resizer
+
     f:Hide()
     mainFrame = f
     
     GUI:CreateDropdown()
     GUI:UpdateStats()
-    
+    GUI:ApplyLockPosition()
+
     return f
 end
 
@@ -207,14 +209,41 @@ function GUI:CreateDropdown()
         info = {}
         info.text = "Show Minimap Button"
         info.checked = FlightTrackerDB.settings.showMinimapButton
-        info.func = function() 
+        info.func = function()
             FlightTrackerDB.settings.showMinimapButton = not FlightTrackerDB.settings.showMinimapButton
             if FlightTracker.UpdateMinimapButtonVisibility then
                 FlightTracker:UpdateMinimapButtonVisibility()
             end
         end
         UIDropDownMenu_AddButton(info)
-        
+
+        info = {}
+        info.text = "Lock Position"
+        info.checked = FlightTrackerDB.settings.lockPosition
+        info.func = function()
+            FlightTrackerDB.settings.lockPosition = not FlightTrackerDB.settings.lockPosition
+            GUI:ApplyLockPosition()
+        end
+        UIDropDownMenu_AddButton(info)
+
+        info = {}
+        info.text = "Hide Timer Border"
+        info.checked = FlightTrackerDB.settings.hideBorder
+        info.func = function()
+            FlightTrackerDB.settings.hideBorder = not FlightTrackerDB.settings.hideBorder
+            FlightTracker:ApplyTimerFrameStyle()
+        end
+        UIDropDownMenu_AddButton(info)
+
+        info = {}
+        info.text = "Hide Timer Background"
+        info.checked = FlightTrackerDB.settings.hideBackground
+        info.func = function()
+            FlightTrackerDB.settings.hideBackground = not FlightTrackerDB.settings.hideBackground
+            FlightTracker:ApplyTimerFrameStyle()
+        end
+        UIDropDownMenu_AddButton(info)
+
         info = {}
         info.text = ""
         info.notCheckable = true
@@ -229,6 +258,22 @@ function GUI:CreateDropdown()
         end
         UIDropDownMenu_AddButton(info)
     end, "MENU")
+end
+
+function GUI:ApplyLockPosition()
+    local locked = FlightTrackerDB.settings.lockPosition
+    if mainFrame then
+        if locked then
+            mainFrame:EnableMouse(false)
+            if mainFrame.resizer then mainFrame.resizer:Hide() end
+        else
+            mainFrame:EnableMouse(true)
+            if mainFrame.resizer then mainFrame.resizer:Show() end
+        end
+    end
+    if FlightTracker.ApplyTimerFrameLock then
+        FlightTracker:ApplyTimerFrameLock()
+    end
 end
 
 function GUI:UpdateStats()
