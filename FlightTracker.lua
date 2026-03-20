@@ -100,6 +100,8 @@ function FlightTracker:ADDON_LOADED()
     self:CreateMinimapButton()
     
     tinsert(UISpecialFrames, "FlightTrackerMain")
+
+    self:UnregisterEvent("ADDON_LOADED")
 end
 
 function FlightTracker:PLAYER_ENTERING_WORLD()
@@ -107,6 +109,9 @@ function FlightTracker:PLAYER_ENTERING_WORLD()
         isFlying = true
         startTime = GetTime()
         destNode = "Unknown"
+        flightTimerFrame.destText:SetText("In Flight")
+        flightTimerFrame.zoneText:SetText("")
+        flightTimerFrame.max = 0
         flightTimerFrame:Show()
         self:StartMonitor()
     else
@@ -131,8 +136,8 @@ function FlightTracker:HookTaxiMap()
 
     local original_TakeTaxiNode = TakeTaxiNode
     TakeTaxiNode = function(index)
-        local type = TaxiNodeGetType(index)
-        if type == "REACHABLE" then
+        local nodeType = TaxiNodeGetType(index)
+        if nodeType == "REACHABLE" then
             local destName = TaxiNodeName(index)
             
             if FlightTrackerDB.settings.confirmFlight and not FlightTracker.confirming then
@@ -155,9 +160,9 @@ function FlightTracker:HookTaxiMap()
         
         local index = button:GetID()
         if index then
-            local type = TaxiNodeGetType(index)
+            local nodeType = TaxiNodeGetType(index)
 
-            if type == "REACHABLE" then
+            if nodeType == "REACHABLE" then
                 local destName = TaxiNodeName(index)
                 local origin = cachedOriginNode or FlightTracker.Util.GetCurrentFlightNode()
             
@@ -183,7 +188,8 @@ function FlightTracker:PrepareFlight(index, destName)
     isPending = true
     pendingDestName = destName
     pendingCost = TaxiNodeCost(index)
-    
+    self.pendingStartTime = GetTime()
+
     self:StartMonitor()
 end
 
@@ -208,6 +214,9 @@ function FlightTracker.OnUpdateMonitor()
         if UnitOnTaxi("player") then
             isPending = false
             self:StartFlight(pendingDestName, pendingCost)
+        elseif GetTime() - self.pendingStartTime > 10 then
+            isPending = false
+            self:StopMonitor()
         end
     elseif isFlying then
         if not UnitOnTaxi("player") then
@@ -229,7 +238,7 @@ function FlightTracker:StartFlight(destination, cost)
         self.charStats.totalFlights = self.charStats.totalFlights + 1
     end
 
-    originNode = FlightTracker.Util.GetCurrentFlightNode()
+    originNode = cachedOriginNode or FlightTracker.Util.GetCurrentFlightNode()
 
     local key = originNode .. " -> " .. destNode
     local knownDuration = FlightTrackerDB.flights[key]
@@ -249,13 +258,10 @@ function FlightTracker:StartFlight(destination, cost)
     end
 
     if FlightTrackerDB.settings.showTimer then
-        local node, zone = string.find(destNode, "^(.+), (.+)$")
-        if not node then 
-            node = destNode 
+        local _, _, node, zone = string.find(destNode, "^(.+), (.+)$")
+        if not node then
+            node = destNode
             zone = GetZoneText()
-        else
-            node = string.sub(destNode, 0, string.find(destNode, ",") - 1)
-            zone = string.sub(destNode, string.find(destNode, ",") + 2)
         end
 
         flightTimerFrame.destText:SetText(node)
@@ -279,13 +285,20 @@ function FlightTracker:EndFlight()
     if originNode and destNode and duration > 10 then
         local key = originNode .. " -> " .. destNode
         
-        -- Save flight duration GLOBALLY
-        FlightTrackerDB.flights[key] = duration
+        -- Save flight duration GLOBALLY (keep shortest recorded time)
+        local existing = FlightTrackerDB.flights[key]
+        if not existing or duration < existing then
+            FlightTrackerDB.flights[key] = duration
+        end
         
         -- Save statistics LOCALLY (Per Character)
         if self.charStats then
             self.charStats.totalTime = self.charStats.totalTime + duration
             
+            if type(self.charStats.longestFlight) ~= "table" then
+                self.charStats.longestFlight = { duration = self.charStats.longestFlight or 0, route = "" }
+            end
+
             if duration > self.charStats.longestFlight.duration then
                 self.charStats.longestFlight.duration = duration
                 self.charStats.longestFlight.route = key
@@ -411,6 +424,7 @@ function FlightTracker:UpdateMinimapButtonPosition()
     local x = math.cos(math.rad(angle)) * radius
     local y = math.sin(math.rad(angle)) * radius
     
+    self.minimapButton:ClearAllPoints()
     self.minimapButton:SetPoint("CENTER", "Minimap", "CENTER", -x, y)
 end
 

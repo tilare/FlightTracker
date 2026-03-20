@@ -41,7 +41,7 @@ function FlightTracker.Util.FormatMoney(amount)
     
     local gold = math.floor(amount / 10000)
     local silver = math.floor(math.mod(amount, 10000) / 100)
-    local copper = math.mod(amount, 100)
+    local copper = math.floor(math.mod(amount, 100))
     
     local text = ""
     

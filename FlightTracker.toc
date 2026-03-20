@@ -2,7 +2,7 @@
 ## Title: |cffffcc00Flight|cffffffffTracker
 ## Notes: Tracks flight path times and flying-related statistics
 ## Author: tilr
-## Version: 1.1
+## Version: 1.2
 ## SavedVariables: FlightTrackerDB
 
 FlightTracker.lua

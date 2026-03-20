@@ -11,7 +11,7 @@ local mainFrame = nil
 local optionsMenuFrame = nil
 
 StaticPopupDialogs["FLIGHTTRACKER_RESET_STATS"] = {
-    text = "Are you sure you want to reset your statistics for " .. UnitName("player") .. "?\n(Flight times will be preserved)",
+    text = "Are you sure you want to reset your statistics for %s?\n(Flight times will be preserved)",
     button1 = "Yes",
     button2 = "No",
     OnAccept = function()
@@ -175,31 +175,35 @@ function GUI:CreateDropdown()
         info = {}
         info.text = "Show In-Flight Timer"
         info.checked = FlightTrackerDB.settings.showTimer
-        info.func = function() 
+        info.keepShownOnClick = 1
+        info.func = function()
             FlightTrackerDB.settings.showTimer = not FlightTrackerDB.settings.showTimer
         end
         UIDropDownMenu_AddButton(info)
-        
+
         info = {}
         info.text = "Auto Dismount"
         info.checked = FlightTrackerDB.settings.autoDismount
-        info.func = function() 
+        info.keepShownOnClick = 1
+        info.func = function()
             FlightTrackerDB.settings.autoDismount = not FlightTrackerDB.settings.autoDismount
         end
         UIDropDownMenu_AddButton(info)
-        
+
         info = {}
         info.text = "Confirm Flights"
         info.checked = FlightTrackerDB.settings.confirmFlight
-        info.func = function() 
+        info.keepShownOnClick = 1
+        info.func = function()
             FlightTrackerDB.settings.confirmFlight = not FlightTrackerDB.settings.confirmFlight
         end
         UIDropDownMenu_AddButton(info)
-        
+
         info = {}
         info.text = "Announce ETA to Party/Raid"
         info.checked = FlightTrackerDB.settings.announceFlight
-        info.func = function() 
+        info.keepShownOnClick = 1
+        info.func = function()
             FlightTrackerDB.settings.announceFlight = not FlightTrackerDB.settings.announceFlight
         end
         UIDropDownMenu_AddButton(info)
@@ -207,7 +211,8 @@ function GUI:CreateDropdown()
         info = {}
         info.text = "Show Minimap Button"
         info.checked = FlightTrackerDB.settings.showMinimapButton
-        info.func = function() 
+        info.keepShownOnClick = 1
+        info.func = function()
             FlightTrackerDB.settings.showMinimapButton = not FlightTrackerDB.settings.showMinimapButton
             if FlightTracker.UpdateMinimapButtonVisibility then
                 FlightTracker:UpdateMinimapButtonVisibility()
@@ -224,7 +229,7 @@ function GUI:CreateDropdown()
         info.text = "|cffff0000Reset Statistics|r"
         info.notCheckable = true
         info.func = function()
-            StaticPopup_Show("FLIGHTTRACKER_RESET_STATS")
+            StaticPopup_Show("FLIGHTTRACKER_RESET_STATS", UnitName("player"))
             CloseDropDownMenus()
         end
         UIDropDownMenu_AddButton(info)
@@ -236,14 +241,10 @@ function GUI:UpdateStats()
     
     local s = FlightTracker.charStats
     local u = FlightTracker.Util
-    
-    local formatLong = u.FormatLongTime or function(t) return t end
-    local formatMoney = u.FormatMoney or function(c) return c end
-    local formatTime = u.FormatTime or function(t) return t end
-    
+
     mainFrame.statFlights:SetText(s.totalFlights or 0)
-    mainFrame.statTime:SetText(formatLong(s.totalTime or 0))
-    mainFrame.statGold:SetText(formatMoney(s.totalGold or 0))
+    mainFrame.statTime:SetText(u.FormatLongTime(s.totalTime or 0))
+    mainFrame.statGold:SetText(u.FormatMoney(s.totalGold or 0))
     
     local lDuration = 0
     local lRoute = ""
@@ -260,7 +261,7 @@ function GUI:UpdateStats()
     end
     
     if lDuration > 0 then
-        mainFrame.statLongest:SetText(formatTime(lDuration))
+        mainFrame.statLongest:SetText(u.FormatTime(lDuration))
         mainFrame.statLongestRoute:SetText(lRoute)
     else
         mainFrame.statLongest:SetText("None")
