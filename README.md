@@ -1,6 +1,8 @@
 # FlightTracker
 Records flight times and costs and provides flight statistics.
 
+## Features 
+
 **Flight Time Tracking -** Records your flight times and shows them in flight master tooltips.
 
 **In-Flight Timer -** Displays remaining time left during flight.
