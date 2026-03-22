@@ -127,6 +127,10 @@ function GUI:Create()
     f.statLongestRoute:SetPoint("TOP", 0, -118)
     f.statLongestRoute:SetText("-")
     f.statLongestRoute:SetJustifyH("CENTER")
+
+    f:SetScript("OnSizeChanged", function()
+        GUI:FitRouteText()
+    end)
     
     local resizer = CreateFrame("Button", nil, f)
     resizer:SetWidth(16)
@@ -236,6 +240,19 @@ function GUI:CreateDropdown()
     end, "MENU")
 end
 
+function GUI:FitRouteText()
+    if not mainFrame then return end
+    local fs = mainFrame.statLongestRoute
+    local maxWidth = mainFrame:GetWidth() - 24
+    local font, _, flags = fs:GetFont()
+    local size = 10
+    fs:SetFont(font, size, flags)
+    while fs:GetStringWidth() > maxWidth and size > 6 do
+        size = size - 0.5
+        fs:SetFont(font, size, flags)
+    end
+end
+
 function GUI:UpdateStats()
     if not mainFrame or not FlightTracker.charStats then return end
     
@@ -256,13 +273,10 @@ function GUI:UpdateStats()
         lDuration = s.longestFlight or 0
     end
     
-    if string.len(lRoute) > 48 then
-        lRoute = string.sub(lRoute, 1, 45) .. "..."
-    end
-    
     if lDuration > 0 then
         mainFrame.statLongest:SetText(u.FormatTime(lDuration))
         mainFrame.statLongestRoute:SetText(lRoute)
+        GUI:FitRouteText()
     else
         mainFrame.statLongest:SetText("None")
         mainFrame.statLongestRoute:SetText("")
