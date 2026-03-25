@@ -52,11 +52,11 @@ function GUI:Create()
     f:SetBackdropColor(unpack(BACKDROP_COLOR))
     f:SetBackdropBorderColor(unpack(BORDER_COLOR))
     
-    f:SetScript("OnMouseDown", function() 
-        if arg1 == "LeftButton" then this:StartMoving() end 
+    f:SetScript("OnMouseDown", function()
+        if arg1 == "LeftButton" and not FlightTrackerDB.settings.lockPosition then this:StartMoving() end
     end)
-    f:SetScript("OnMouseUp", function() 
-        if arg1 == "LeftButton" then this:StopMovingOrSizing() end 
+    f:SetScript("OnMouseUp", function()
+        if arg1 == "LeftButton" then this:StopMovingOrSizing() end
     end)
     
     local closeBtn = CreateFrame("Button", nil, f)
@@ -104,6 +104,42 @@ function GUI:Create()
     optBtn:SetScript("OnClick", function()
         ToggleDropDownMenu(1, nil, optionsMenuFrame, this, 0, 0)
     end)
+
+    local routeBtn = CreateFrame("Button", nil, f)
+    routeBtn:SetWidth(60)
+    routeBtn:SetHeight(20)
+    routeBtn:SetPoint("RIGHT", optBtn, "LEFT", -5, 0)
+
+    routeBtn:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        tile = false, tileSize = 0, edgeSize = 1,
+        insets = { left = 0, right = 0, top = 0, bottom = 0 }
+    })
+    routeBtn:SetBackdropColor(0.1, 0.1, 0.1, 1)
+    routeBtn:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+
+    local routeText = routeBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    routeText:SetPoint("CENTER", 0, 0)
+    routeText:SetText("ROUTES")
+    routeText:SetTextColor(0.7, 0.7, 0.7)
+
+    routeBtn:SetScript("OnEnter", function()
+        this:SetBackdropColor(0.2, 0.2, 0.2, 1)
+        this:SetBackdropBorderColor(1, 0.82, 0, 1)
+        routeText:SetTextColor(1, 1, 1)
+    end)
+    routeBtn:SetScript("OnLeave", function()
+        this:SetBackdropColor(0.1, 0.1, 0.1, 1)
+        this:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+        routeText:SetTextColor(0.7, 0.7, 0.7)
+    end)
+
+    routeBtn:SetScript("OnClick", function()
+        if FlightTracker.Checklist then
+            FlightTracker.Checklist:Toggle()
+        end
+    end)
     
     local function CreateStatLine(label, yOffset)
         local l = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -139,12 +175,15 @@ function GUI:Create()
     resizer:SetNormalTexture(ADDON_PATH .. "img\\sizegrabber-up.tga")
     resizer:SetHighlightTexture(ADDON_PATH .. "img\\sizegrabber-highlight.tga")
     resizer:SetPushedTexture(ADDON_PATH .. "img\\sizegrabber-down.tga")
-    resizer:SetScript("OnMouseDown", function() f:StartSizing("BOTTOMRIGHT") end)
+    resizer:SetScript("OnMouseDown", function()
+        if not FlightTrackerDB.settings.lockPosition then f:StartSizing("BOTTOMRIGHT") end
+    end)
     resizer:SetScript("OnMouseUp", function() f:StopMovingOrSizing() end)
+    f.resizer = resizer
     
     f:Hide()
     mainFrame = f
-    
+
     GUI:CreateDropdown()
     GUI:UpdateStats()
     
@@ -223,12 +262,31 @@ function GUI:CreateDropdown()
             end
         end
         UIDropDownMenu_AddButton(info)
-        
+
+        info = {}
+        info.text = "Lock Position"
+        info.checked = FlightTrackerDB.settings.lockPosition
+        info.keepShownOnClick = 1
+        info.func = function()
+            FlightTrackerDB.settings.lockPosition = not FlightTrackerDB.settings.lockPosition
+        end
+        UIDropDownMenu_AddButton(info)
+
+        info = {}
+        info.text = "Hide Timer Border and Backdrop"
+        info.checked = FlightTrackerDB.settings.hideBorder
+        info.keepShownOnClick = 1
+        info.func = function()
+            FlightTrackerDB.settings.hideBorder = not FlightTrackerDB.settings.hideBorder
+            FlightTracker:ApplyTimerBorderVisibility()
+        end
+        UIDropDownMenu_AddButton(info)
+
         info = {}
         info.text = ""
         info.notCheckable = true
         UIDropDownMenu_AddButton(info)
-        
+
         info = {}
         info.text = "|cffff0000Reset Statistics|r"
         info.notCheckable = true

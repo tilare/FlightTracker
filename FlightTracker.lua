@@ -61,6 +61,8 @@ function FlightTracker:ADDON_LOADED()
     if not FlightTrackerDB then FlightTrackerDB = {} end
     
     if not FlightTrackerDB.flights then FlightTrackerDB.flights = {} end
+    if not FlightTrackerDB.routes then FlightTrackerDB.routes = {} end
+    if not FlightTrackerDB.checklistExpanded then FlightTrackerDB.checklistExpanded = {} end
     
     if not FlightTrackerDB.char then FlightTrackerDB.char = {} end
     if not FlightTrackerDB.char[playerName] then FlightTrackerDB.char[playerName] = {} end
@@ -82,7 +84,9 @@ function FlightTracker:ADDON_LOADED()
         confirmFlight = false,
         announceFlight = false,
         minimapPos = 45,
-        showMinimapButton = true
+        showMinimapButton = true,
+        lockPosition = false,
+        hideBorder = false
     }
 
     if not FlightTrackerDB.settings then 
@@ -123,12 +127,43 @@ end
 
 function FlightTracker:TAXIMAP_OPENED()
     cachedOriginNode = FlightTracker.Util.GetCurrentFlightNode()
-    
+
+    self:ScanRoutes()
+
     if FlightTrackerDB.settings.autoDismount then
         self:DismountPlayer()
     end
 
     self:HookTaxiMap()
+end
+
+function FlightTracker:ScanRoutes()
+    local currentNode = cachedOriginNode
+    if not currentNode then return end
+
+    local faction = UnitFactionGroup("player")
+    if not faction then return end
+
+    if not FlightTrackerDB.routes[currentNode] then
+        FlightTrackerDB.routes[currentNode] = {}
+    end
+
+    local numNodes = NumTaxiNodes()
+    for i = 1, numNodes do
+        if TaxiNodeGetType(i) == "REACHABLE" then
+            local nodeName = TaxiNodeName(i)
+            local current = FlightTrackerDB.routes[currentNode][nodeName]
+            if not current or current == true then
+                FlightTrackerDB.routes[currentNode][nodeName] = faction
+            elseif current ~= faction and current ~= "Both" then
+                FlightTrackerDB.routes[currentNode][nodeName] = "Both"
+            end
+        end
+    end
+
+    if FlightTracker.Checklist and FlightTracker.Checklist:IsOpen() then
+        FlightTracker.Checklist:Refresh()
+    end
 end
 
 function FlightTracker:HookTaxiMap()
@@ -306,8 +341,11 @@ function FlightTracker:EndFlight()
         end
         
         self:Print("Landed at " .. destNode .. ". Time: " .. self.Util.FormatTime(duration))
-        
+
         if FlightTracker.GUI then FlightTracker.GUI:UpdateStats() end
+        if FlightTracker.Checklist and FlightTracker.Checklist:IsOpen() then
+            FlightTracker.Checklist:Refresh()
+        end
     end
     
     startTime = 0
@@ -473,10 +511,11 @@ function FlightTracker:CreateTimerFrame()
     resizer:SetScript("OnMouseDown", function() 
         f:StartSizing("BOTTOMRIGHT")
     end)
-    resizer:SetScript("OnMouseUp", function() 
+    resizer:SetScript("OnMouseUp", function()
         f:StopMovingOrSizing()
     end)
-    
+    f.resizer = resizer
+
     f.destText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.destText:SetPoint("TOP", 0, -10)
     f.destText:SetText("Destination")
@@ -525,7 +564,8 @@ function FlightTracker:CreateTimerFrame()
         GameTooltip:Hide()
         helpText:SetTextColor(0.5, 0.5, 0.5)
     end)
-    
+    f.help = help
+
     f:SetScript("OnUpdate", function()
         if not isFlying then return end
 
@@ -547,12 +587,39 @@ function FlightTracker:CreateTimerFrame()
         this.timerText:SetText(text)
     end)
     flightTimerFrame = f
+    self:ApplyTimerBorderVisibility()
+end
+
+function FlightTracker:ApplyTimerBorderVisibility()
+    if not flightTimerFrame then return end
+    if FlightTrackerDB.settings.hideBorder then
+        flightTimerFrame:SetBackdrop(nil)
+        flightTimerFrame.resizer:Hide()
+        flightTimerFrame.help:Hide()
+    else
+        flightTimerFrame:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true, tileSize = 16, edgeSize = 16,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 }
+        })
+        flightTimerFrame:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+        flightTimerFrame:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+        flightTimerFrame.resizer:Show()
+        flightTimerFrame.help:Show()
+    end
 end
 
 SLASH_FLIGHTTRACKER1 = "/ft"
 SLASH_FLIGHTTRACKER2 = "/flighttracker"
 SlashCmdList["FLIGHTTRACKER"] = function(msg)
-    if FlightTracker.GUI then 
+    if msg == "routes" or msg == "checklist" then
+        if FlightTracker.Checklist then
+            FlightTracker.Checklist:Toggle()
+        else
+            FlightTracker:Print("Checklist module not loaded.")
+        end
+    elseif FlightTracker.GUI then
         FlightTracker.GUI:Toggle()
     else
         FlightTracker:Print("GUI module not loaded.")
